@@ -5,6 +5,12 @@ import (
 	"sort"
 )
 
+// TagField represents field that with tag in struct
+type TagField struct {
+	Tag   string
+	Field reflect.Value
+}
+
 // GetFieldsSortedByTag returns tags and its' corresponding values sorted
 // by given tagKey in alphabet order.
 // (nil, nil) is return if v is not struct
@@ -17,35 +23,39 @@ import (
 //          Age    int    `schema:"age"`
 //    }
 //    u := User{"0000", "alice", 20}
-//    tags, values := GetFieldsSortedByTag(u, "schema")
-//    // tags=["age", "name", "passwd"], values=[20, "alice", "0000]
-//    GetFieldsSortedByTag("string") // nil, nil is return
+//    fields := GetFieldsSortedByTag(u, "schema")
+//    // fields =[{"age", 20}, {"name", "alice"}, {"passwd", "0000"}]
+//    GetFieldsSortedByTag("string") // nil is return
 //
-func GetFieldsSortedByTag(v interface{}, tagKey string) (tags []string, values []reflect.Value) {
+func GetFieldsSortedByTag(v interface{}, tagKey string) (fields []TagField) {
 	rt := reflect.TypeOf(v)
 	if rt.Kind() != reflect.Struct { // type not struct
-		return nil, nil
+		return nil
 	}
 
-	tags = make([]string, 0)          // tags, for sorting
-	fields := make(map[string]string) // key: tag, value: field name
+	tags := make([]string, 0)           // tags, for sorting
+	fieldMap := make(map[string]string) // key: tag, value: field name
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		t := f.Tag.Get(tagKey)
 		if t == "" { // escape empty tag
 			continue
 		}
-		fields[t] = f.Name
+		fieldMap[t] = f.Name
 		tags = append(tags, t)
 	}
 	sort.Strings(tags)
 
 	value := reflect.ValueOf(v)
-	values = make([]reflect.Value, 0)
+	fields = make([]TagField, 0)
 	for _, t := range tags {
-		fieldName := fields[t]
-		values = append(values, value.FieldByName(fieldName))
+		fieldName := fieldMap[t]
+		f := TagField{
+			Tag:   t,
+			Field: value.FieldByName(fieldName),
+		}
+		fields = append(fields, f)
 	}
 
-	return tags, values
+	return fields
 }
