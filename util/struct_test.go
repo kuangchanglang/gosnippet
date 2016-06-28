@@ -39,8 +39,8 @@ func TestGetFieldSortedByTag(t *testing.T) {
 			t.Errorf("expect: %v, got: %v", f.Tag, expTags[i])
 			return
 		}
-		if f.Field.String() != expValues[i] {
-			t.Errorf("expect: %v, got: %v", f.Field.String(), expValues[i])
+		if f.Value.String() != expValues[i] {
+			t.Errorf("expect: %v, got: %v", f.Value.String(), expValues[i])
 			return
 		}
 	}
@@ -56,8 +56,8 @@ func TestGetFieldSortedByTag(t *testing.T) {
 			t.Errorf("expect: %v, got: %v", f.Tag, expTags[i])
 			return
 		}
-		if f.Field.String() != expValues[i] {
-			t.Errorf("expect: %v, got: %v", f.Field.String(), expValues[i])
+		if f.Value.String() != expValues[i] {
+			t.Errorf("expect: %v, got: %v", f.Value.String(), expValues[i])
 			return
 		}
 	}

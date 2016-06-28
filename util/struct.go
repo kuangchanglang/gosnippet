@@ -8,7 +8,7 @@ import (
 // TagField represents field that with tag in struct
 type TagField struct {
 	Tag   string
-	Field reflect.Value
+	Value reflect.Value
 }
 
 // GetFieldsSortedByTag returns tags and its' corresponding values sorted
@@ -52,7 +52,7 @@ func GetFieldsSortedByTag(v interface{}, tagKey string) (fields []TagField) {
 		fieldName := fieldMap[t]
 		f := TagField{
 			Tag:   t,
-			Field: value.FieldByName(fieldName),
+			Value: value.FieldByName(fieldName),
 		}
 		fields = append(fields, f)
 	}
