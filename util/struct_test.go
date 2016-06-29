@@ -1,4 +1,4 @@
-package util
+package sort
 
 import (
 	"fmt"
@@ -14,13 +14,13 @@ type User struct {
 }
 
 func TestGetFieldSortedByTag(t *testing.T) {
-	fields := GetFieldsSortedByTag(1, "schema") // int
+	fields := GetFieldsByTag(1, "schema") // int
 	if fields != nil {
 		t.Errorf("tags %v!=nil", fields)
 		return
 	}
 
-	fields = GetFieldsSortedByTag("string", "schema") // string
+	fields = GetFieldsByTag("string", "schema") // string
 	if fields != nil {
 		t.Errorf("tags %v!=nil", fields)
 		return
@@ -28,7 +28,7 @@ func TestGetFieldSortedByTag(t *testing.T) {
 
 	u := User{"kcl", "123", "a", "c", "b"}
 
-	fields = GetFieldsSortedByTag(u, "schema")
+	fields = GetFieldsByTag(u, "schema")
 	fmt.Printf("fields: %v\n", fields)
 
 	expTags := []string{"a", "b", "name", "password"}
@@ -45,7 +45,7 @@ func TestGetFieldSortedByTag(t *testing.T) {
 		}
 	}
 
-	fields = GetFieldsSortedByTag(u, "json")
+	fields = GetFieldsByTag(u, "json")
 	fmt.Printf("fields: %v\n", fields)
 
 	expTags = []string{"1", "2", "3", "4"}
@@ -61,5 +61,51 @@ func TestGetFieldSortedByTag(t *testing.T) {
 			return
 		}
 	}
+}
 
+type Foo struct {
+	A int     `schema:"aa"`
+	B float64 `schema:"00"`
+	C string  `schema:"cc,omitempty" sort:"haha"`
+	D string  `schema:"1"`
+	E int     `schema:"e,omitempty"`
+	F int     `schema:"f,omitempty"`
+}
+
+var foo = Foo{3, 8.33, "", "d", 0, 9}
+
+func TestGetFields(t *testing.T) {
+	// get tagkey "sort" as default
+	fields := GetFields(foo)
+	if fields.Len() != 1 {
+		t.Errorf("fields length expect 1, got:%v", fields.Len())
+		return
+	}
+}
+
+func TestEncode(t *testing.T) {
+	fields := GetFieldsByTag(foo, "schema")
+	str := fields.Encode("&")
+	fmt.Println(str)
+	expect := "00=8.33&1=d&aa=3&f=9"
+	if str != expect {
+		t.Errorf("expect: %v, got: %v", expect, str)
+		return
+	}
+}
+
+func TestEncodeValOnly(t *testing.T) {
+	fields := GetFieldsByTag(foo, "schema")
+	str := fields.EncodeValOnly("")
+	expect := "8.33d39"
+	if str != expect {
+		t.Errorf("expect: %v, got: %v", expect, str)
+		return
+	}
+}
+
+func BenchmarkGetFields(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		GetFieldsByTag(foo, "schema")
+	}
 }
