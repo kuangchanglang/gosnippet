@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 var (
@@ -19,12 +20,11 @@ var (
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hello world233333"))
+	time.Sleep(20 * time.Second)
+	w.Write([]byte("hello world233333!!!!"))
 }
 
 func main() {
-	go signalHandler()
-
 	graceful := flag.Bool("graceful", false, "listen on fd open 3 (internal use only)")
 	flag.Parse()
 
@@ -35,6 +35,8 @@ func main() {
 	var err error
 	if *graceful {
 		log.Print("main: Listening to existing file descriptor 3.")
+		// cmd.ExtraFiles: If non-nil, entry i becomes file descriptor 3+i.
+		// when we put socket FD at the first entry, it will always be 3(0+3)
 		f := os.NewFile(3, "")
 		listener, err = net.FileListener(f)
 	} else {
@@ -46,8 +48,12 @@ func main() {
 		log.Fatalf("listener error: %v", err)
 	}
 
-	err = server.Serve(listener)
-	log.Printf("server.Serve err: %v\n", err)
+	go func() {
+		err = server.Serve(listener)
+		log.Printf("server.Serve err: %v\n", err)
+	}()
+	signalHandler()
+	log.Printf("signal end")
 }
 
 func reload() error {
@@ -66,12 +72,13 @@ func reload() error {
 	cmd := exec.Command(os.Args[0], args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	// put socket FD at the first entry
 	cmd.ExtraFiles = []*os.File{f}
 	return cmd.Start()
 }
 
 func signalHandler() {
-	ch := make(chan os.Signal, 10)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR2)
 	for {
 		sig := <-ch
@@ -79,15 +86,23 @@ func signalHandler() {
 		switch sig {
 		case syscall.SIGINT, syscall.SIGTERM:
 			// stop
+			log.Printf("stop")
 			signal.Stop(ch)
-			server.Shutdown(context.Background())
+			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+			server.Shutdown(ctx)
+			log.Printf("graceful shutdown")
+			return
 		case syscall.SIGUSR2:
 			// reload
+			log.Printf("reload")
 			err := reload()
 			if err != nil {
 				log.Fatalf("graceful restart error: %v", err)
 			}
-			server.Shutdown(context.Background())
+			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+			server.Shutdown(ctx)
+			log.Printf("graceful reload")
+			return
 		}
 	}
 }
