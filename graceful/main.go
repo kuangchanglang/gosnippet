@@ -31,7 +31,6 @@ func main() {
 	http.HandleFunc("/hello", handler)
 	server = &http.Server{Addr: ":9999"}
 
-	log.Printf("args: %v, graceful: %v", os.Args, *graceful)
 	var err error
 	if *graceful {
 		log.Print("main: Listening to existing file descriptor 3.")
@@ -49,6 +48,7 @@ func main() {
 	}
 
 	go func() {
+		// server.Shutdown() stops Serve() immediately, thus server.Serve() should not be in main goroutine
 		err = server.Serve(listener)
 		log.Printf("server.Serve err: %v\n", err)
 	}()
@@ -83,12 +83,14 @@ func signalHandler() {
 	for {
 		sig := <-ch
 		log.Printf("signal: %v", sig)
+
+		// timeout context for shutdown
+		ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
 		switch sig {
 		case syscall.SIGINT, syscall.SIGTERM:
 			// stop
 			log.Printf("stop")
 			signal.Stop(ch)
-			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
 			server.Shutdown(ctx)
 			log.Printf("graceful shutdown")
 			return
@@ -99,7 +101,6 @@ func signalHandler() {
 			if err != nil {
 				log.Fatalf("graceful restart error: %v", err)
 			}
-			ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
 			server.Shutdown(ctx)
 			log.Printf("graceful reload")
 			return
