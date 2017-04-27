@@ -17,6 +17,7 @@ import (
 var (
 	server   *http.Server
 	listener net.Listener
+	graceful = flag.Bool("graceful", false, "listen on fd open 3 (internal use only)")
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +26,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	graceful := flag.Bool("graceful", false, "listen on fd open 3 (internal use only)")
 	flag.Parse()
 
 	http.HandleFunc("/hello", handler)
@@ -59,12 +59,11 @@ func main() {
 func reload() error {
 	tl, ok := listener.(*net.TCPListener)
 	if !ok {
-		log.Printf("listener is not tcp listener")
 		return errors.New("listener is not tcp listener")
 	}
+
 	f, err := tl.File()
 	if err != nil {
-		log.Printf("get listener file error: %v", err)
 		return err
 	}
 
